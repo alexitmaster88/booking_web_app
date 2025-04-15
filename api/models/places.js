@@ -1,21 +1,56 @@
-const mongoose = require("mongoose");
+const { DataTypes } = require('sequelize');
+const sequelize = require('../config/database');
+const User = require('./users');
 
-const placeSchema = new mongoose.Schema({
-  owner: {type: mongoose.Schema.Types.ObjectId, ref: "User"},
-  title: String,
-  address: String,
-  photos: [String],
-  description: String,
-  perks: [String],
-  extraInfo: String,
-  checkIn: Number,
-  checkOut: Number,
-  maxGuests: Number,
-  price: Number,
-  startDate: Date,
-  endDate: Date
+const Place = sequelize.define('Place', {
+  title: {
+    type: DataTypes.STRING,
+    allowNull: false
+  },
+  address: {
+    type: DataTypes.STRING,
+    allowNull: false
+  },
+  photos: {
+    type: DataTypes.ARRAY(DataTypes.STRING),
+    defaultValue: []
+  },
+  description: {
+    type: DataTypes.TEXT
+  },
+  perks: {
+    type: DataTypes.ARRAY(DataTypes.STRING),
+    defaultValue: []
+  },
+  extraInfo: {
+    type: DataTypes.TEXT
+  },
+  checkIn: {
+    type: DataTypes.INTEGER
+  },
+  checkOut: {
+    type: DataTypes.INTEGER
+  },
+  maxGuests: {
+    type: DataTypes.INTEGER
+  },
+  price: {
+    type: DataTypes.FLOAT
+  },
+  startDate: {
+    type: DataTypes.DATE
+  },
+  endDate: {
+    type: DataTypes.DATE
+  }
+}, {
+  timestamps: true
 });
 
-const placeModel = mongoose.model("Place", placeSchema);
+// Define relationship with User
+Place.belongsTo(User, { 
+  foreignKey: 'ownerId', // This replaces the owner field in MongoDB
+  as: 'owner' // Alias to maintain compatibility with existing code
+});
 
-module.exports = placeModel;
+module.exports = Place;

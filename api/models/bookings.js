@@ -1,16 +1,45 @@
-const mongoose = require("mongoose");
+const { DataTypes } = require('sequelize');
+const sequelize = require('../config/database');
+const Place = require('./places');
+const User = require('./users');
 
-const bookingSchema = new mongoose.Schema({
-  place: {type: mongoose.Schema.Types.ObjectId, required: true, ref: "Place"},
-  user: {type: mongoose.Schema.Types.ObjectId, required: true},
-  checkInDate: {type: Date, required: true},
-  checkOutDate: {type: Date, required: true},
-  numOfGuests: {type: Number, required: true},
-  guestName: {type: String, required: true},
-  guestPhone: {type: String, required: true},
-  totalPrice: Number,
+const Booking = sequelize.define('Booking', {
+  checkInDate: {
+    type: DataTypes.DATE,
+    allowNull: false
+  },
+  checkOutDate: {
+    type: DataTypes.DATE,
+    allowNull: false
+  },
+  numOfGuests: {
+    type: DataTypes.INTEGER,
+    allowNull: false
+  },
+  guestName: {
+    type: DataTypes.STRING,
+    allowNull: false
+  },
+  guestPhone: {
+    type: DataTypes.STRING,
+    allowNull: false
+  },
+  totalPrice: {
+    type: DataTypes.FLOAT
+  }
+}, {
+  timestamps: true
 });
 
-const bookingModel = mongoose.model("Booking", bookingSchema);
+// Define relationships
+Booking.belongsTo(Place, { 
+  foreignKey: 'placeId',
+  as: 'place' // Alias to maintain compatibility with existing code
+});
 
-module.exports = bookingModel;
+Booking.belongsTo(User, { 
+  foreignKey: 'userId',
+  as: 'user' // Alias to maintain compatibility with existing code
+});
+
+module.exports = Booking;
