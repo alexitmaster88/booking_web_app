@@ -1,11 +1,13 @@
-import { useEffect, useState } from "react";
+import { useContext, useEffect, useState } from "react";
 import PerkSelections from "./PerkSelections";
 import PhotoUploader from "../components/PhotoUploader";
 import axios from "axios";
 import { Navigate, useParams } from "react-router-dom";
+import { UserContext } from "../components/UserContext";
 
 export default function PlacesFormPage() {
   const { id } = useParams();
+  const { user } = useContext(UserContext);
   const [title, setTitle] = useState("");
   const [address, setAddress] = useState("");
   const [addedPhotos, setAddedPhotos] = useState([]);
@@ -14,11 +16,17 @@ export default function PlacesFormPage() {
   const [extraInfo, setExtraInfo] = useState("");
   const [checkIn, setCheckIn] = useState("");
   const [checkOut, setCheckOut] = useState("");
-  const [maxGuests, setMaxGuests] = useState();
-  const [price, setPrice] = useState();
-  const [startDate, setStartDate] = useState();
-  const [endDate, setEndDate] = useState();
+  const [maxGuests, setMaxGuests] = useState(1);
+  const [price, setPrice] = useState(0);
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
   const [redirect, setRedirect] = useState(false);
+  const [error, setError] = useState("");
+
+  // Redirect if user is not a host
+  if (user && user.userType !== 'host') {
+    return <Navigate to="/" />;
+  }
 
   useEffect(() => { // display data entered before by user 
     if (!id) {
@@ -34,9 +42,11 @@ export default function PlacesFormPage() {
         setExtraInfo(data.extraInfo);
         setCheckIn(data.checkIn);
         setCheckOut(data.checkOut);
-        setPrice(data.price),
-        setStartDate(data.startDate.split("T")[0]);
-        setEndDate(data.endDate.split("T")[0]);
+        setPrice(data.price);
+        setMaxGuests(data.maxGuests);
+        // Format dates properly if they exist
+        if (data.startDate) setStartDate(data.startDate.split("T")[0]);
+        if (data.endDate) setEndDate(data.endDate.split("T")[0]);
       });
     }
   }, [id]); // reactive values referenced inside of the above setup code
@@ -60,9 +70,29 @@ export default function PlacesFormPage() {
 
   async function savePlace(event) {
     event.preventDefault();
-    if (startDate > endDate) {
-      return alert("End date must be later than Start date. ");
-    };
+    setError("");
+
+    // Validate required fields
+    if (!title.trim()) {
+      setError("Title is required");
+      return;
+    }
+    
+    if (!address.trim()) {
+      setError("Address is required");
+      return;
+    }
+
+    // Validate dates if both are provided
+    if (startDate && endDate && new Date(startDate) > new Date(endDate)) {
+      setError("End date must be later than Start date");
+      return;
+    }
+
+    // Ensure numeric fields are valid
+    const numGuests = parseInt(maxGuests) || 1;
+    const numPrice = parseFloat(price) || 0;
+
     const placeData = {
       title,
       address,
@@ -72,12 +102,12 @@ export default function PlacesFormPage() {
       extraInfo,
       checkIn,
       checkOut,
-      maxGuests,
-      price,
-      startDate,
-      endDate
+      maxGuests: numGuests,
+      price: numPrice,
+      startDate: startDate || null,
+      endDate: endDate || null
     };
-    console.log("start date: " + startDate);
+
     try {
       if (id) {
         //update
@@ -91,7 +121,8 @@ export default function PlacesFormPage() {
       }
       setRedirect(true);
     } catch (error) {
-      alert("Submit failed, please try again later.");
+      console.error("Submission error:", error.response?.data || error);
+      setError(error.response?.data?.error || "Submit failed, please try again later.");
     }
   }
 
@@ -102,17 +133,23 @@ export default function PlacesFormPage() {
   return (
     <div>
       <form onSubmit={savePlace} className="px-14">
+        {error && (
+          <div className="bg-red-100 text-red-800 p-4 mb-4 rounded-lg">
+            {error}
+          </div>
+        )}
+        
         {preInput(
           "Title",
-          "title for your apartment. It's better to have a short and catchy title as in an advertisement."
+          "title for your conference room. It's better to have a short and catchy title."
         )}
         <input
           type="text"
-          placeholder="title, for example: My lovely apartment"
+          placeholder="title, for example: Executive Conference Room"
           value={title}
           onChange={(event) => setTitle(event.target.value)}
         />
-        {preInput("Address", "address of this place. ")}
+        {preInput("Address", "address of this conference room. ")}
         <input
           type="text"
           placeholder="address"
@@ -124,12 +161,12 @@ export default function PlacesFormPage() {
           addedPhotos={addedPhotos}
           setAddedPhotos={setAddedPhotos}
         />
-        {preInput("Description", "description of the place. ")}
+        {preInput("Description", "description of the conference room. ")}
         <textarea
           value={description}
           onChange={(event) => setDescription(event.target.value)}
         />
-        {preInput("Perks", "select all the perks of your place.")}
+        {preInput("Perks", "select all the perks of your conference room.")}
         <PerkSelections selectedPerks={perks} setPerks={setPerks} />
         {preInput("Extra info", "house rules, etc. ")}
         <textarea
@@ -137,12 +174,12 @@ export default function PlacesFormPage() {
           onChange={(event) => setExtraInfo(event.target.value)}
         />
         {preInput(
-          "Checkin & Checkout times",
-          "add checkin and checkout times, remember to have some time for cleaning the room between guests."
+          "Availability times",
+          "add available times, remember to have some time for cleaning the room between bookings."
         )}
         <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
           <div>
-            <h3 className="mt-2 -mb-1">Start date</h3>
+            <h3 className="mt-2 -mb-1">Available from date</h3>
             <input
               className="w-full border my-2 py-2 px-3 rounded-2xl"
               type="date"
@@ -151,7 +188,7 @@ export default function PlacesFormPage() {
             />
           </div>
           <div>
-            <h3 className="mt-2 -mb-1">End date</h3>
+            <h3 className="mt-2 -mb-1">Available until date</h3>
             <input
               className="w-full border my-2 py-2 px-3 rounded-2xl"
               type="date"
@@ -161,43 +198,45 @@ export default function PlacesFormPage() {
           </div>
 
           <div>
-            <h3 className="mt-2 -mb-1">Check in time</h3>
+            <h3 className="mt-2 -mb-1">Available from (hour)</h3>
             <input
               type="text"
-              placeholder="15"
+              placeholder="9"
               value={checkIn}
               onChange={(event) => setCheckIn(event.target.value)}
             />
           </div>
           <div>
-            <h3 className="mt-2 -mb-1">Check out time</h3>
+            <h3 className="mt-2 -mb-1">Available until (hour)</h3>
             <input
               type="text"
-              placeholder="11"
+              placeholder="18"
               value={checkOut}
               onChange={(event) => setCheckOut(event.target.value)}
             />
           </div>
           <div>
-            <h3 className="mt-2 -mb-1">Price per night (pounds)</h3>
+            <h3 className="mt-2 -mb-1">Price per hour (£)</h3>
             <input
               type="number"
-              placeholder="100"
+              min="0"
+              placeholder="50"
               value={price}
               onChange={(event) => setPrice(event.target.value)}
             />
           </div>
           <div>
-            <h3 className="mt-2 -mb-1">Max number of guests</h3>
+            <h3 className="mt-2 -mb-1">Max number of attendees</h3>
             <input
               type="number"
-              placeholder="4"
+              min="1"
+              placeholder="10"
               value={maxGuests}
               onChange={(event) => setMaxGuests(event.target.value)}
             />
           </div>
         </div>
-        <button className="primary my-5">Save</button>
+        <button className="primary my-5">Save Conference Room</button>
       </form>
     </div>
   );

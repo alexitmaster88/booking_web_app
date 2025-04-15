@@ -1,15 +1,19 @@
 import axios from "axios";
-import { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useContext, useEffect, useState } from "react";
+import { useParams, useNavigate } from "react-router-dom";
 import BookingWidget from "../components/BookingWidget";
 import PhotoGallery from "../components/PhotoGallery";
 import BookingCard from "../components/BookingCard";
+import { UserContext } from "../components/UserContext";
 
 export default function PlaceDetailPage() {
   const { placeId, bookingId } = useParams();
   const [placeDetail, setPlaceDetail] = useState();
   const [bookingDetail, setBookingDetail] = useState();
   const [buttonDisabled, setButtonDisabled] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const { user } = useContext(UserContext);
+  const navigate = useNavigate();
   const months = [
     "Jan","Feb","Mar","Apr",
     "May","Jun","Jul","Aug",
@@ -32,63 +36,129 @@ export default function PlaceDetailPage() {
     }
   }, [placeId, bookingId]); // refresh the page if the id changes
 
+  // Delete conference room function
+  async function handleDelete() {
+    if (window.confirm('Are you sure you want to delete this conference room? This will also cancel all associated bookings and cannot be undone.')) {
+      setIsDeleting(true);
+      try {
+        await axios.delete(`/places/${placeId}`);
+        alert('Conference room deleted successfully');
+        navigate('/account/user-places'); // Redirect to my conference rooms page
+      } catch (error) {
+        alert(`Error: ${error.response?.data?.error || error.message}`);
+        setIsDeleting(false);
+      }
+    }
+  }
+
   if (!placeDetail) return "";
 
+  // Check if current user is the owner of this conference room
+  const isOwner = user && placeDetail.ownerId === user.id;
+
   return (
-    <div className="mx-14 -mt-4">
-      <h1 className="text-2xl mb-2 font-bold">{placeDetail.title}</h1>
-      {/* target="_blank": open in a new window */}
-      <a
-        className="flex gap-1 font-semibold underline items-center mb-4"
-        target="_blank"
-        href={"http://maps.google.com/?q=" + placeDetail.address}
-      >
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          viewBox="0 0 24 24"
-          fill="currentColor"
-          className="w-5 h-5"
+    <div className="mx-4 md:mx-8 lg:mx-14 -mt-4">
+      {/* Header section */}
+      <div className="mb-4">
+        <h1 className="text-2xl mb-2 font-bold">{placeDetail.title}</h1>
+        <a
+          className="flex gap-1 font-semibold underline items-center"
+          target="_blank"
+          href={"http://maps.google.com/?q=" + placeDetail.address}
         >
-          <path
-            fillRule="evenodd"
-            d="M11.54 22.351l.07.04.028.016a.76.76 0 00.723 0l.028-.015.071-.041a16.975 16.975 0 001.144-.742 19.58 19.58 0 002.683-2.282c1.944-1.99 3.963-4.98 3.963-8.827a8.25 8.25 0 00-16.5 0c0 3.846 2.02 6.837 3.963 8.827a19.58 19.58 0 002.682 2.282 16.975 16.975 0 001.145.742zM12 13.5a3 3 0 100-6 3 3 0 000 6z"
-            clipRule="evenodd"
-          />
-        </svg>
-        {placeDetail.address}
-      </a>
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 24 24"
+            fill="currentColor"
+            className="w-5 h-5"
+          >
+            <path
+              fillRule="evenodd"
+              d="M11.54 22.351l.07.04.028.016a.76.76 0 00.723 0l.028-.015.071-.041a16.975 16.975 0 001.144-.742 19.58 19.58 0 002.683-2.282c1.944-1.99 3.963-4.98 3.963-8.827a8.25 8.25 0 00-16.5 0c0 3.846 2.02 6.837 3.963 8.827a19.58 19.58 0 002.682 2.282 16.975 16.975 0 001.145.742zM12 13.5a3 3 0 100-6 3 3 0 000 6z"
+              clipRule="evenodd"
+            />
+          </svg>
+          {placeDetail.address}
+        </a>
+      </div>
 
+      {/* Owner notification */}
+      {isOwner && (
+        <div className="bg-green-100 p-4 mb-4 rounded-lg">
+          <p className="text-green-800 font-semibold">You are the owner of this conference room</p>
+        </div>
+      )}
+
+      {/* Booking card for existing bookings */}
       <BookingCard bookingDetail={bookingDetail}/>
-      <PhotoGallery placeDetail={placeDetail} />
 
-      <div className="grid mt-5 grid-cols-1 md:grid-cols-[2fr_1fr]">
-        <div className="mt-5 mr-5">
-          <div className="mb-5">
-            <h2 className="text-2xl font-semibold mb-2">Description</h2>
-            <p className="leading-7">{placeDetail.description}</p>
-            <div className="my-4 mb-6 leading-7">
-              <p>
-                Available dates: {new Date(placeDetail.startDate).getDate()}{" "}
-                {months[new Date(placeDetail.startDate).getMonth()]}
-                {" - "}
-                {new Date(placeDetail.endDate).getDate()}{" "}
-                {months[new Date(placeDetail.endDate).getMonth()]}
-              </p>
-              <p>Max number of guests: {placeDetail.maxGuests} </p>
-              <p>Check in: {placeDetail.checkIn} </p>
-              <p>Check out: {placeDetail.checkOut} </p>
-            </div>
-            <hr />
+      {/* Main content layout - photos and sidebar */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Left side - Photos and description */}
+        <div className="lg:col-span-2">
+          <div className="mb-6">
+            <PhotoGallery placeDetail={placeDetail} />
           </div>
-          <div className="mb-5 mr-3 mt-2">
-            <h2 className="text-2xl font-semibold my-2">Extra information</h2>
-            <p className="leading-7">{placeDetail.extraInfo}</p>
+          
+          <div className="mt-6">
+            <div className="mb-5">
+              <h2 className="text-2xl font-semibold mb-2">Description</h2>
+              <p className="leading-7">{placeDetail.description}</p>
+              <div className="my-4 mb-6 leading-7">
+                <p>
+                  Available dates: {new Date(placeDetail.startDate).getDate()}{" "}
+                  {months[new Date(placeDetail.startDate).getMonth()]}
+                  {" - "}
+                  {new Date(placeDetail.endDate).getDate()}{" "}
+                  {months[new Date(placeDetail.endDate).getMonth()]}
+                </p>
+                <p>Max number of attendees: {placeDetail.maxGuests} </p>
+                <p>Available from: {placeDetail.checkIn} </p>
+                <p>Available until: {placeDetail.checkOut} </p>
+              </div>
+              <hr />
+            </div>
+            <div className="mb-5 mt-2">
+              <h2 className="text-2xl font-semibold my-2">Extra information</h2>
+              <p className="leading-7">{placeDetail.extraInfo}</p>
+            </div>
           </div>
         </div>
-        <BookingWidget
-          placeDetail={placeDetail}
-          buttonDisabled={buttonDisabled}
-        />
+
+        {/* Right side - Booking widget or management options */}
+        <div className="lg:col-span-1">
+          <div className="sticky top-4">
+            {/* Show booking widget only for clients or if viewing a booking */}
+            {(!user || user.userType === 'client' || bookingId) && (
+              <BookingWidget
+                placeDetail={placeDetail}
+                buttonDisabled={buttonDisabled || isOwner}
+              />
+            )}
+            
+            {/* Show management options for hosts who own this conference room */}
+            {user && user.userType === 'host' && isOwner && !bookingId && (
+              <div className="bg-white shadow p-4 rounded-2xl">
+                <h2 className="text-xl font-semibold mb-4">Management Options</h2>
+                <div className="flex flex-col gap-2">
+                  <a 
+                    href={`/account/places/${placeId}`} 
+                    className="bg-green-500 py-2 px-5 rounded-2xl text-white text-center"
+                  >
+                    Edit Conference Room
+                  </a>
+                  <button 
+                    className="bg-red-500 py-2 px-5 rounded-2xl text-white"
+                    onClick={handleDelete}
+                    disabled={isDeleting}
+                  >
+                    {isDeleting ? 'Deleting...' : 'Delete Conference Room'}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );

@@ -1,67 +1,87 @@
 import { Link, useLocation } from "react-router-dom";
 import DateDuration from "./DateDuration";
+import { useContext } from "react";
+import { UserContext } from "./UserContext";
 
 export default function List(props) {
-  const { pathname } = useLocation(); // /account/:subpage
+  const { pathname } = useLocation();
+  const { user } = useContext(UserContext);
   let subpage = pathname.split("/")?.[2];
+  const isHostViewingOwnRooms = user?.userType === 'host' && subpage === "user-places";
 
   return (
     <div className="mt-4 px-14">
       {props.places.length > 0 &&
         props.places.map((place) => (
-          <Link
-            to={
-              subpage == "user-places"
-                ? "http://localhost:5173/account/places/" + place._id
-                : "http://localhost:5173/place/" +
-                  place._id +
-                  "/" +
-                  props.booking._id
-            }
-            key={place._id}
-            className="flex gap-4 py-4 px-5 m-4 mt-7 bg-gray-100 rounded-2xl cursor-pointer"
+          <div 
+            key={place.id || place._id} 
+            className="flex gap-4 py-4 px-5 m-4 mt-7 bg-gray-100 rounded-2xl"
           >
-            <div className="flex w-32 h-32 bg-gray-200">
-              {place.photos.length > 0 && (
+            {/* Room image with link */}
+            <Link 
+              to={
+                isHostViewingOwnRooms
+                  ? `/place/${place.id || place._id}`
+                  : props.booking
+                    ? `/place/${place.id || place._id}/${props.booking.id || props.booking._id}`
+                    : `/place/${place.id || place._id}`
+              }
+              className="flex w-32 h-32 bg-gray-200"
+            >
+              {place.photos?.length > 0 && (
                 <img
                   className="flex object-cover with-auto"
-                  src={"http://localhost:4000/uploads/" + place.photos[0]}
+                  src={`http://localhost:4000/uploads/${place.photos[0]}`}
                   alt=""
                 />
               )}
-            </div>
+            </Link>
+            
+            {/* Room details */}
             <div className="grow">
-              <h2 className="text-xl -mt-1">{place.title.substring(0, 50)}</h2>
-              <p className="flex items-center mt-1">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  strokeWidth={1.5}
-                  stroke="currentColor"
-                  className="w-5 h-5"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z"
-                  />
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z"
-                  />
-                </svg>
-                {place.address.substring(0, 50)}
-              </p>
+              <Link 
+                to={
+                  isHostViewingOwnRooms
+                    ? `/place/${place.id || place._id}`
+                    : props.booking
+                      ? `/place/${place.id || place._id}/${props.booking.id || props.booking._id}`
+                      : `/place/${place.id || place._id}`
+                }
+              >
+                <h2 className="text-xl -mt-1">{place.title?.substring(0, 50)}</h2>
+                <p className="flex items-center mt-1">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    strokeWidth={1.5}
+                    stroke="currentColor"
+                    className="w-5 h-5"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z"
+                    />
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z"
+                    />
+                  </svg>
+                  {place.address?.substring(0, 50)}
+                </p>
+              </Link>
 
-              <div className={subpage == "bookings" ? "mt-7" : "mt-12"}>
-                <DateDuration
-                  checkInDate={props.checkInDate}
-                  checkOutDate={props.checkOutDate}
-                />
+              <div className={subpage === "bookings" ? "mt-7" : "mt-6"}>
+                {props.checkInDate && props.checkOutDate && (
+                  <DateDuration
+                    checkInDate={props.checkInDate}
+                    checkOutDate={props.checkOutDate}
+                  />
+                )}
 
-                <div className="gap-2 flex justify-between items-center">
+                <div className="gap-2 flex justify-between items-center mt-2">
                   <div className="flex mt-1">
                     <p className="flex gap-1 items-center mr-2">
                       <svg
@@ -100,7 +120,7 @@ export default function List(props) {
                   </div>
                   <div className="text-right">
                     {props.totalPrice && (
-                      <div className="underline flex gap-1 items-center">
+                      <div className="flex gap-1 items-center">
                         <svg
                           xmlns="http://www.w3.org/2000/svg"
                           fill="none"
@@ -121,8 +141,26 @@ export default function List(props) {
                   </div>
                 </div>
               </div>
+              
+              {/* Management buttons for hosts */}
+              {isHostViewingOwnRooms && (
+                <div className="flex gap-2 mt-4">
+                  <Link 
+                    to={`/account/places/${place.id || place._id}`}
+                    className="bg-green-500 text-white py-1 px-3 rounded-lg text-sm hover:bg-green-600"
+                  >
+                    Edit
+                  </Link>
+                  <Link 
+                    to={`/place/${place.id || place._id}`}
+                    className="bg-blue-500 text-white py-1 px-3 rounded-lg text-sm hover:bg-blue-600"
+                  >
+                    View Details
+                  </Link>
+                </div>
+              )}
             </div>
-          </Link>
+          </div>
         ))}
     </div>
   );

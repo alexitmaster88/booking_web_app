@@ -30,13 +30,68 @@ export default function ProfilePage({}) {
   return (
     <div>
       <AccountNav />
-        <div className="text-center max-w-lg mx-auto mt-8">
-          {/* mx-auto: center the element on a row  */}
-          Logged in as {user.name} ({user.email}) <br />
-          <button onClick={logout} className="primary max-w-sm mt-2">
+      <div className="text-center max-w-lg mx-auto mt-8">
+        {/* User info card */}
+        <div className="bg-white shadow p-6 rounded-lg">
+          <div className="mb-5">
+            <div className="text-3xl font-bold mb-1">{user.name}</div>
+            <div className="text-gray-500">{user.email}</div>
+            <div className="mt-3">
+              <span className={`px-3 py-1 rounded-full text-sm ${
+                user.userType === 'host' ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800'
+              }`}>
+                {user.userType === 'host' ? 'Host Account' : 'Client Account'}
+              </span>
+            </div>
+          </div>
+
+          <div className="mt-6 border-t pt-6">
+            <h3 className="font-semibold text-lg mb-3">Account Information</h3>
+            <div className="grid grid-cols-1 gap-3 text-left">
+              <div>
+                <span className="text-gray-600">Account Type:</span> 
+                <span className="font-medium ml-2">
+                  {user.userType === 'host' ? 
+                    'Host (can create and manage conference rooms)' : 
+                    'Client (can browse and book conference rooms)'}
+                </span>
+              </div>
+              <div>
+                <span className="text-gray-600">Member Since:</span>
+                <span className="font-medium ml-2">
+                  {new Date().toLocaleDateString('en-US', {year: 'numeric', month: 'long'})}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {user.userType === 'client' && (
+            <div className="mt-5">
+              <p className="text-gray-700 mb-4">
+                As a client, you can browse and book conference rooms for your meetings and events.
+              </p>
+              <a href="/" className="inline-block bg-blue-500 text-white py-2 px-4 rounded-lg">
+                Browse Conference Rooms
+              </a>
+            </div>
+          )}
+
+          {user.userType === 'host' && (
+            <div className="mt-5">
+              <p className="text-gray-700 mb-4">
+                As a host, you can create and manage your own conference rooms and handle booking requests.
+              </p>
+              <a href="/account/user-places" className="inline-block bg-blue-500 text-white py-2 px-4 rounded-lg">
+                Manage My Conference Rooms
+              </a>
+            </div>
+          )}
+
+          <button onClick={logout} className="primary max-w-sm mt-6">
             Logout
           </button>
         </div>
+      </div>
     </div>
   );
 }
