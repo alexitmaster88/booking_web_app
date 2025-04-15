@@ -48,17 +48,19 @@ app.get("/test", (req, res) => {
 });
 
 app.post("/register", async (req, res) => {
-  const { name, email, password } = req.body;
+  const { name, email, password, userType } = req.body;
   try {
     const userData = await User.create({
       name,
       email,
       password: bcrypt.hashSync(password, bcryptSalt),
+      userType: userType || 'client', // Default to client if not provided
     });
     res.json({
       id: userData.id,
       name: userData.name,
-      email: userData.email
+      email: userData.email,
+      userType: userData.userType
     });
   } catch (e) {
     res.status(422).json(e);
@@ -74,7 +76,7 @@ app.post("/login", async (req, res) => {
       const pass = bcrypt.compareSync(password, userData.password);
       if (pass) {
         jwt.sign(
-          { email: userData.email, id: userData.id },
+          { email: userData.email, id: userData.id, userType: userData.userType },
           jwtSecret,
           {},
           (err, token) => {
@@ -82,7 +84,8 @@ app.post("/login", async (req, res) => {
             res.cookie("token", token).json({
               id: userData.id,
               name: userData.name,
-              email: userData.email
+              email: userData.email,
+              userType: userData.userType
             }); // set a cookie
           }
         );
@@ -114,7 +117,7 @@ app.get("/profile", (req, res) => {
       if (err) throw err;
       // Update Mongoose findById to Sequelize findByPk
       const user = await User.findByPk(userData.id, {
-        attributes: ['id', 'name', 'email'] // Select only needed fields
+        attributes: ['id', 'name', 'email', 'userType'] // Include userType
       });
       res.json(user);
     });
@@ -162,17 +165,46 @@ app.post("/places", async (req, res) => {
   } = req.body;
 
   try {
+    // Validate required fields
+    if (!title || !address) {
+      return res.status(422).json({ error: "Title and address are required fields" });
+    }
+
     const userData = await getUserDataFromToken(req);
-    const placeDoc = await Place.create({
-      ownerId: userData.id, // Use ownerId instead of owner
-      title, address, photos,
-      description, perks, extraInfo,
-      checkIn, checkOut, maxGuests,
-      price, startDate, endDate
-    });
+    if (!userData || !userData.id) {
+      return res.status(401).json({ error: "Authentication required" });
+    }
+    
+    // Check if user is a host
+    if (userData.userType !== 'host') {
+      return res.status(403).json({ error: "Only hosts can create conference rooms" });
+    }
+    
+    // Process numeric fields
+    const processedData = {
+      ownerId: userData.id,
+      title, 
+      address, 
+      photos: Array.isArray(photos) ? photos : [],
+      description: description || "",
+      perks: Array.isArray(perks) ? perks : [],
+      extraInfo: extraInfo || "",
+      checkIn: checkIn || null,
+      checkOut: checkOut || null,
+      maxGuests: maxGuests ? parseInt(maxGuests, 10) : 1,
+      price: price ? parseFloat(price) : 0,
+      startDate: startDate || null,
+      endDate: endDate || null
+    };
+
+    const placeDoc = await Place.create(processedData);
     res.json(placeDoc);
   } catch (error) {
-    res.status(422).json({ error: error.message });
+    console.error("Place creation error:", error);
+    res.status(422).json({ 
+      error: error.message, 
+      details: error.errors ? error.errors.map(e => e.message) : undefined 
+    });
   }
 });
 
@@ -220,16 +252,22 @@ app.put("/places", async (req, res) => {
   
   try {
     const userData = await getUserDataFromToken(req);
+    
+    // Check if user is a host
+    if (userData.userType !== 'host') {
+      return res.status(403).json({ error: "Only hosts can update conference rooms" });
+    }
+    
     // Update Mongoose findById to Sequelize findByPk
     const place = await Place.findByPk(id);
     
     if (!place) {
-      return res.status(404).json({ error: "Place not found" });
+      return res.status(404).json({ error: "Conference room not found" });
     }
     
     // Check if the current user is the owner
     if (userData.id !== place.ownerId) {
-      return res.status(403).json({ error: "Not authorized" });
+      return res.status(403).json({ error: "You can only manage your own conference rooms" });
     }
     
     // Update place properties
@@ -278,7 +316,8 @@ app.post("/bookings", async (req, res) => {
       numOfGuests, 
       guestName, 
       guestPhone, 
-      totalPrice
+      totalPrice,
+      status: 'pending' // Explicitly set status to pending
     });
     
     res.json(booking);
@@ -290,17 +329,192 @@ app.post("/bookings", async (req, res) => {
 app.get("/bookings", async (req, res) => {
   try {
     const userData = await getUserDataFromToken(req);
-    // Update Mongoose find + populate to Sequelize findAll + include
-    const bookings = await Booking.findAll({
-      where: { userId: userData.id },
-      include: {
-        model: Place,
-        as: 'place',
-        attributes: ['id', 'title', 'address', 'photos', 'price', 'checkIn', 'checkOut']
+    
+    if (userData.userType === 'host') {
+      // For hosts: Find bookings for conference rooms they own
+      const hostBookings = await Booking.findAll({
+        include: [
+          {
+            model: Place,
+            as: 'place',
+            where: { ownerId: userData.id },
+            attributes: ['id', 'title', 'address', 'photos', 'price', 'checkIn', 'checkOut']
+          },
+          {
+            model: User,
+            as: 'user',
+            attributes: ['id', 'name', 'email']
+          }
+        ],
+        order: [
+          ['createdAt', 'DESC'] // Most recent bookings first
+        ]
+      });
+      
+      res.json(hostBookings);
+    } else {
+      // For clients: Find bookings made by this user
+      // Exclude rejected/cancelled bookings
+      const clientBookings = await Booking.findAll({
+        where: { 
+          userId: userData.id,
+          status: ['pending', 'approved'] // Only return pending and approved bookings
+        },
+        include: {
+          model: Place,
+          as: 'place',
+          attributes: ['id', 'title', 'address', 'photos', 'price', 'checkIn', 'checkOut']
+        },
+        order: [
+          ['createdAt', 'DESC'] // Most recent bookings first
+        ]
+      });
+      
+      res.json(clientBookings);
+    }
+  } catch (error) {
+    console.error("Error fetching bookings:", error);
+    res.status(422).json({ error: error.message });
+  }
+});
+
+// New endpoint: Update booking status (approve/reject)
+app.put("/bookings/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+    const userData = await getUserDataFromToken(req);
+    
+    // Verify status is valid
+    if (!['pending', 'approved', 'rejected'].includes(status)) {
+      return res.status(400).json({ error: "Invalid status value" });
+    }
+    
+    // Get the booking
+    const booking = await Booking.findByPk(id, {
+      include: [
+        {
+          model: Place,
+          as: 'place'
+        },
+        {
+          model: User,
+          as: 'user'
+        }
+      ]
+    });
+    
+    if (!booking) {
+      return res.status(404).json({ error: "Booking not found" });
+    }
+    
+    // Check if logged in user is the host of the place
+    if (userData.userType === 'host') {
+      // Verify this host owns the place
+      if (booking.place.ownerId !== userData.id) {
+        return res.status(403).json({ error: "You can only manage bookings for your own places" });
+      }
+      
+      booking.status = status;
+      await booking.save();
+      
+      return res.json({ success: true, booking });
+    } else if (userData.userType === 'client' && booking.userId === userData.id) {
+      // Client can cancel their own booking by setting status to 'rejected'
+      if (status !== 'rejected') {
+        return res.status(403).json({ error: "Clients can only cancel their bookings" });
+      }
+      
+      booking.status = status;
+      await booking.save();
+      
+      return res.json({ success: true, booking });
+    } else {
+      return res.status(403).json({ error: "Not authorized to update this booking" });
+    }
+  } catch (error) {
+    console.error("Error updating booking:", error);
+    res.status(422).json({ error: error.message });
+  }
+});
+
+// New endpoint to count pending booking requests for hosts
+app.get("/bookings/counts", async (req, res) => {
+  try {
+    const userData = await getUserDataFromToken(req);
+    
+    if (userData.userType !== 'host') {
+      return res.status(403).json({ error: "Only hosts can access booking counts" });
+    }
+    
+    const pendingCount = await Booking.count({
+      include: [
+        {
+          model: Place,
+          as: 'place',
+          where: { ownerId: userData.id },
+          attributes: []
+        }
+      ],
+      where: {
+        status: 'pending'
       }
     });
-    res.json(bookings);
+    
+    res.json({ pendingCount });
   } catch (error) {
+    console.error("Error fetching booking counts:", error);
+    res.status(422).json({ error: error.message });
+  }
+});
+
+// New endpoint: Delete a place and all its associated bookings
+app.delete("/places/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userData = await getUserDataFromToken(req);
+
+    // Verify user is authenticated
+    if (!userData || !userData.id) {
+      return res.status(401).json({ error: "Authentication required" });
+    }
+    
+    // Check if user is a host
+    if (userData.userType !== 'host') {
+      return res.status(403).json({ error: "Only hosts can delete conference rooms" });
+    }
+    
+    // Find the place
+    const place = await Place.findByPk(id);
+    
+    if (!place) {
+      return res.status(404).json({ error: "Conference room not found" });
+    }
+    
+    // Verify this host is the owner
+    if (place.ownerId !== userData.id) {
+      return res.status(403).json({ error: "You can only delete your own conference rooms" });
+    }
+    
+    // Find all bookings associated with this place
+    const bookings = await Booking.findAll({
+      where: { placeId: id }
+    });
+    
+    // Delete all bookings first (to maintain referential integrity)
+    if (bookings.length > 0) {
+      await Booking.destroy({
+        where: { placeId: id }
+      });
+    }
+    
+    // Delete the place
+    await place.destroy();
+    
+    res.json({ success: true, message: "Conference room and all associated bookings deleted successfully" });
+    
+  } catch (error) {
+    console.error("Error deleting conference room:", error);
     res.status(422).json({ error: error.message });
   }
 });

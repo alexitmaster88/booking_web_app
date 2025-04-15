@@ -5,43 +5,67 @@ const User = require('./users');
 const Place = sequelize.define('Place', {
   title: {
     type: DataTypes.STRING,
-    allowNull: false
+    allowNull: false,
+    validate: {
+      notEmpty: true
+    }
   },
   address: {
     type: DataTypes.STRING,
-    allowNull: false
+    allowNull: false,
+    validate: {
+      notEmpty: true
+    }
   },
   photos: {
     type: DataTypes.ARRAY(DataTypes.STRING),
     defaultValue: []
   },
   description: {
-    type: DataTypes.TEXT
+    type: DataTypes.TEXT,
+    allowNull: true
   },
   perks: {
     type: DataTypes.ARRAY(DataTypes.STRING),
     defaultValue: []
   },
   extraInfo: {
-    type: DataTypes.TEXT
+    type: DataTypes.TEXT,
+    allowNull: true
   },
   checkIn: {
-    type: DataTypes.INTEGER
+    type: DataTypes.STRING,
+    allowNull: true
   },
   checkOut: {
-    type: DataTypes.INTEGER
+    type: DataTypes.STRING,
+    allowNull: true
   },
   maxGuests: {
-    type: DataTypes.INTEGER
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    defaultValue: 1
   },
   price: {
-    type: DataTypes.FLOAT
+    type: DataTypes.FLOAT,
+    allowNull: true,
+    defaultValue: 0
   },
   startDate: {
-    type: DataTypes.DATE
+    type: DataTypes.DATE,
+    allowNull: true
   },
   endDate: {
-    type: DataTypes.DATE
+    type: DataTypes.DATE,
+    allowNull: true
+  },
+  ownerId: {
+    type: DataTypes.INTEGER,
+    allowNull: false,
+    references: {
+      model: 'Users',
+      key: 'id'
+    }
   }
 }, {
   timestamps: true

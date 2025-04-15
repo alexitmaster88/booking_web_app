@@ -14,6 +14,11 @@ const User = sequelize.define('User', {
   password: {
     type: DataTypes.STRING,
     allowNull: false
+  },
+  userType: {
+    type: DataTypes.ENUM('host', 'client'),
+    allowNull: false,
+    defaultValue: 'client'
   }
 }, {
   timestamps: true // Equivalent to Mongoose timestamps

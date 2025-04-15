@@ -26,6 +26,11 @@ const Booking = sequelize.define('Booking', {
   },
   totalPrice: {
     type: DataTypes.FLOAT
+  },
+  status: {
+    type: DataTypes.ENUM('pending', 'approved', 'rejected'),
+    defaultValue: 'pending',
+    allowNull: false
   }
 }, {
   timestamps: true
