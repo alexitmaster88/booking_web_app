@@ -1,15 +1,53 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import CloudinaryImage from "./CloudinaryImage";
 
 export default function PhotoGallery({placeDetail}) {
   const [showAllPhotos, setShowAllPhotos] = useState(false);
+  const [currentSlide, setCurrentSlide] = useState(0);
+  const scrollRef = useRef(null);
+  
+  // Function to scroll to next or previous image
+  const scroll = (direction) => {
+    if (scrollRef.current) {
+      const { current } = scrollRef;
+      const scrollAmount = direction === 'left' 
+        ? current.scrollLeft - current.offsetWidth 
+        : current.scrollLeft + current.offsetWidth;
+      
+      current.scrollTo({
+        left: scrollAmount,
+        behavior: 'smooth'
+      });
+      
+      // Update current slide indicator
+      const newSlide = direction === 'left' 
+        ? Math.max(0, currentSlide - 1)
+        : Math.min(placeDetail.photos.length - 1, currentSlide + 1);
+      setCurrentSlide(newSlide);
+    }
+  };
+  
+  // Function to directly jump to a specific slide
+  const goToSlide = (index) => {
+    if (scrollRef.current) {
+      const { current } = scrollRef;
+      const scrollAmount = current.offsetWidth * index;
+      
+      current.scrollTo({
+        left: scrollAmount,
+        behavior: 'smooth'
+      });
+      
+      setCurrentSlide(index);
+    }
+  };
 
+  // Full screen gallery view
   if (showAllPhotos) {
     return (
-      // take the whole screen, absolute: make the screen scrollable
       <div className="bg-black fixed inset-0 min-h-screen z-50">
-        <div className="bg-black p-4 md:p-8 grid gap-4">
-          <div className="flex justify-between items-center">
+        <div className="bg-black p-4 md:p-8 flex flex-col h-full">
+          <div className="flex justify-between items-center mb-4">
             <h2 className="text-white text-xl md:text-2xl">
               Photos of {placeDetail.title}
             </h2>
@@ -34,71 +72,145 @@ export default function PhotoGallery({placeDetail}) {
               Close photos
             </button>
           </div>
-          <div className="grid gap-4">
-            {placeDetail.photos?.length > 0 &&
-              placeDetail.photos.map((photo, index) => (
-                <div key={index} className="flex justify-center">
+          
+          {/* Gallery Navigation */}
+          <div className="flex items-center justify-center relative flex-1 w-full">
+            {placeDetail.photos?.length > 1 && (
+              <button 
+                onClick={() => scroll('left')}
+                disabled={currentSlide === 0}
+                className={`absolute left-2 z-10 p-2 rounded-full bg-white/30 hover:bg-white/50 transition ${
+                  currentSlide === 0 ? 'opacity-50 cursor-not-allowed' : 'opacity-100'
+                }`}
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-6 h-6">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5" />
+                </svg>
+              </button>
+            )}
+            
+            {/* Main image container */}
+            <div 
+              ref={scrollRef} 
+              className="flex overflow-x-auto snap-x snap-mandatory scrollbar-hide w-full h-full"
+              style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+            >
+              {placeDetail.photos?.map((photo, index) => (
+                <div 
+                  key={index} 
+                  className="flex-shrink-0 w-full h-full flex items-center justify-center snap-center"
+                >
                   <CloudinaryImage 
                     photo={photo} 
                     alt={`${placeDetail.title} - photo ${index+1}`} 
-                    className="max-w-full md:max-w-3xl" 
+                    className="max-h-[80vh] max-w-full object-contain" 
                   />
                 </div>
               ))}
+            </div>
+            
+            {placeDetail.photos?.length > 1 && (
+              <button 
+                onClick={() => scroll('right')}
+                disabled={currentSlide === placeDetail.photos.length - 1}
+                className={`absolute right-2 z-10 p-2 rounded-full bg-white/30 hover:bg-white/50 transition ${
+                  currentSlide === placeDetail.photos.length - 1 ? 'opacity-50 cursor-not-allowed' : 'opacity-100'
+                }`}
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-6 h-6">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
+                </svg>
+              </button>
+            )}
+          </div>
+          
+          {/* Dots navigation */}
+          {placeDetail.photos?.length > 1 && (
+            <div className="flex justify-center gap-2 mt-4">
+              {placeDetail.photos.map((_, index) => (
+                <button
+                  key={index}
+                  className={`w-3 h-3 rounded-full ${
+                    index === currentSlide ? "bg-white" : "bg-white/40"
+                  }`}
+                  onClick={() => goToSlide(index)}
+                />
+              ))}
+            </div>
+          )}
+          
+          {/* Photo counter */}
+          <div className="text-white text-center mt-2">
+            {currentSlide + 1} / {placeDetail.photos?.length}
           </div>
         </div>
       </div>
     );
   }
 
+  // Regular view with thumbnail preview
   return (
     <div className="relative rounded-xl overflow-hidden">
       {/* Main photo layout */}
       {placeDetail.photos?.length > 0 ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2">
-          {/* First image - always larger on all devices */}
-          <div className="col-span-1 sm:col-span-2 row-span-2">
+        <div className="flex flex-col">
+          {/* Main image - always larger */}
+          <div className="w-full h-[350px] md:h-[450px] overflow-hidden">
             <CloudinaryImage
               photo={placeDetail.photos[0]}
               alt={placeDetail.title}
-              className="aspect-square sm:aspect-auto w-full h-full object-cover cursor-pointer rounded-tl-xl md:rounded-bl-xl"
-              onClick={() => setShowAllPhotos(true)}
+              className="w-full h-full object-cover cursor-pointer"
+              onClick={() => {setShowAllPhotos(true); setCurrentSlide(0);}}
             />
           </div>
           
-          {/* Second image - show on mobile and desktop */}
+          {/* Scrollable thumbnails for additional photos */}
           {placeDetail.photos?.length > 1 && (
-            <div className="col-span-1">
-              <CloudinaryImage
-                photo={placeDetail.photos[1]}
-                alt=""
-                className="aspect-square object-cover cursor-pointer w-full h-full"
-                onClick={() => setShowAllPhotos(true)}
-              />
-            </div>
-          )}
-          
-          {/* Third image - show on mobile and desktop */}
-          {placeDetail.photos?.length > 2 && (
-            <div className="col-span-1">
-              <CloudinaryImage
-                photo={placeDetail.photos[2]}
-                alt=""
-                className="aspect-square object-cover cursor-pointer w-full h-full rounded-tr-xl"
-                onClick={() => setShowAllPhotos(true)}
-              />
-            </div>
-          )}
-          
-          {/* Fourth image - show on mobile and desktop */}
-          {placeDetail.photos?.length > 3 && (
-            <div className="col-span-1">
-              <CloudinaryImage
-                photo={placeDetail.photos[3]}
-                alt=""
-                className="aspect-square object-cover cursor-pointer w-full h-full"
-                onClick={() => setShowAllPhotos(true)}
-              />
+            <div className="relative mt-2">
+              <div className="flex overflow-x-auto gap-2 py-2 px-1 snap-x scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent">
+                {placeDetail.photos.map((photo, index) => (
+                  <div 
+                    key={index} 
+                    className={`flex-shrink-0 w-24 h-24 cursor-pointer snap-start rounded-lg overflow-hidden ${
+                      index === currentSlide ? 'ring-2 ring-primary' : ''
+                    }`}
+                    onClick={() => {setShowAllPhotos(true); setCurrentSlide(index);}}
+                  >
+                    <CloudinaryImage
+                      photo={photo}
+                      alt={`${placeDetail.title} thumbnail ${index+1}`}
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                ))}
+              </div>
+              
+              {/* Left/right scroll buttons for thumbnails */}
+              <button 
+                className="absolute left-0 top-1/2 -translate-y-1/2 bg-white/70 p-1 rounded-r-lg shadow hover:bg-white"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  const container = e.target.closest('.relative').querySelector('.flex');
+                  container.scrollBy({left: -100, behavior: 'smooth'});
+                }}
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5" />
+                </svg>
+              </button>
+              
+              <button 
+                className="absolute right-0 top-1/2 -translate-y-1/2 bg-white/70 p-1 rounded-l-lg shadow hover:bg-white"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  const container = e.target.closest('.relative').querySelector('.flex');
+                  container.scrollBy({left: 100, behavior: 'smooth'});
+                }}
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
+                </svg>
+              </button>
             </div>
           )}
         </div>
@@ -110,8 +222,8 @@ export default function PhotoGallery({placeDetail}) {
       
       {/* Show all photos button */}
       <button
-        className="flex gap-1 absolute bottom-2 right-2 py-2 px-4 bg-white shadow-md shadow-gray-500 rounded-lg"
-        onClick={() => setShowAllPhotos(true)}
+        className="flex gap-1 absolute top-2 right-2 py-2 px-4 bg-white/80 shadow-md shadow-gray-500 rounded-lg hover:bg-white transition"
+        onClick={() => {setShowAllPhotos(true); setCurrentSlide(0);}}
       >
         <svg
           xmlns="http://www.w3.org/2000/svg"

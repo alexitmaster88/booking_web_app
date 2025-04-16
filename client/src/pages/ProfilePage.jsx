@@ -58,17 +58,6 @@ export default function ProfilePage({}) {
             </div>
           </div>
 
-          {user.userType === 'client' && (
-            <div className="mt-5">
-              <p className="text-gray-700 mb-4">
-                As a client, you can browse and book conference rooms for your meetings and events.
-              </p>
-              <a href="/" className="inline-block bg-blue-500 text-white py-2 px-4 rounded-lg">
-                Browse Conference Rooms
-              </a>
-            </div>
-          )}
-
           <button onClick={logout} className="primary max-w-sm mt-6">
             Logout
           </button>
