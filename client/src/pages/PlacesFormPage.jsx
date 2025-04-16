@@ -34,6 +34,7 @@ export default function PlacesFormPage() {
     } else {
       axios.get("/place/" + id).then((response) => {
         const { data } = response;
+        console.log("Loaded photos from database:", data.photos);
         setTitle(data.title);
         setAddress(data.address);
         setDescription(data.description);
@@ -92,11 +93,34 @@ export default function PlacesFormPage() {
     // Ensure numeric fields are valid
     const numGuests = parseInt(maxGuests) || 1;
     const numPrice = parseFloat(price) || 0;
+    
+    console.log("Photos before saving:", addedPhotos);
+    
+    // Ensure photos are properly formatted for storage
+    const formattedPhotos = addedPhotos.map(photo => {
+      // If it's already a Cloudinary object with url and publicId, keep it as is
+      if (typeof photo === 'object' && photo.url && photo.publicId) {
+        return photo;
+      }
+      // If it's a plain string URL but from Cloudinary
+      if (typeof photo === 'string' && photo.includes('cloudinary.com')) {
+        // Try to extract the publicId from the URL
+        const urlParts = photo.split('/');
+        const fileNameWithExtension = urlParts[urlParts.length - 1];
+        const fileName = fileNameWithExtension.split('.')[0];
+        return {
+          url: photo,
+          publicId: `airbnb_clone/${fileName}` // Assuming the folder structure
+        };
+      }
+      // Otherwise, just pass it through (likely local file path)
+      return photo;
+    });
 
     const placeData = {
       title,
       address,
-      photos: addedPhotos,
+      photos: formattedPhotos,
       description,
       perks,
       extraInfo,
@@ -109,16 +133,20 @@ export default function PlacesFormPage() {
     };
 
     try {
+      let response;
+      
       if (id) {
         //update
-        await axios.put("/places", {
+        response = await axios.put("/places", {
           id,
           ...placeData,
         });
       } else {
         //create a new place
-        await axios.post("/places", placeData);
+        response = await axios.post("/places", placeData);
       }
+      
+      console.log("Response after saving:", response.data);
       setRedirect(true);
     } catch (error) {
       console.error("Submission error:", error.response?.data || error);

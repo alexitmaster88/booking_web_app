@@ -1,4 +1,5 @@
 import { useState } from "react";
+import CloudinaryImage from "./CloudinaryImage";
 
 export default function PhotoGallery({placeDetail}) {
   const [showAllPhotos, setShowAllPhotos] = useState(false);
@@ -35,11 +36,11 @@ export default function PhotoGallery({placeDetail}) {
           </div>
           <div className="grid gap-4">
             {placeDetail.photos?.length > 0 &&
-              placeDetail.photos.map((photo) => (
-                <div key={photo} className="flex justify-center">
-                  <img 
-                    src={"http://localhost:4000/uploads/" + photo} 
-                    alt="" 
+              placeDetail.photos.map((photo, index) => (
+                <div key={index} className="flex justify-center">
+                  <CloudinaryImage 
+                    photo={photo} 
+                    alt={`${placeDetail.title} - photo ${index+1}`} 
                     className="max-w-full md:max-w-3xl" 
                   />
                 </div>
@@ -57,22 +58,22 @@ export default function PhotoGallery({placeDetail}) {
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2">
           {/* First image - always larger on all devices */}
           <div className="col-span-1 sm:col-span-2 row-span-2">
-            <img
-              onClick={() => setShowAllPhotos(true)}
-              className="aspect-square sm:aspect-auto w-full h-full object-cover cursor-pointer rounded-tl-xl md:rounded-bl-xl"
-              src={"http://localhost:4000/uploads/" + placeDetail.photos[0]}
+            <CloudinaryImage
+              photo={placeDetail.photos[0]}
               alt={placeDetail.title}
+              className="aspect-square sm:aspect-auto w-full h-full object-cover cursor-pointer rounded-tl-xl md:rounded-bl-xl"
+              onClick={() => setShowAllPhotos(true)}
             />
           </div>
           
           {/* Second image - show on mobile and desktop */}
           {placeDetail.photos?.length > 1 && (
             <div className="col-span-1">
-              <img
-                onClick={() => setShowAllPhotos(true)}
-                className="aspect-square object-cover cursor-pointer w-full h-full"
-                src={"http://localhost:4000/uploads/" + placeDetail.photos[1]}
+              <CloudinaryImage
+                photo={placeDetail.photos[1]}
                 alt=""
+                className="aspect-square object-cover cursor-pointer w-full h-full"
+                onClick={() => setShowAllPhotos(true)}
               />
             </div>
           )}
@@ -80,11 +81,11 @@ export default function PhotoGallery({placeDetail}) {
           {/* Third image - show on mobile and desktop */}
           {placeDetail.photos?.length > 2 && (
             <div className="col-span-1">
-              <img
-                onClick={() => setShowAllPhotos(true)}
-                className="aspect-square object-cover cursor-pointer w-full h-full rounded-tr-xl"
-                src={"http://localhost:4000/uploads/" + placeDetail.photos[2]}
+              <CloudinaryImage
+                photo={placeDetail.photos[2]}
                 alt=""
+                className="aspect-square object-cover cursor-pointer w-full h-full rounded-tr-xl"
+                onClick={() => setShowAllPhotos(true)}
               />
             </div>
           )}
@@ -92,11 +93,11 @@ export default function PhotoGallery({placeDetail}) {
           {/* Fourth image - show on mobile and desktop */}
           {placeDetail.photos?.length > 3 && (
             <div className="col-span-1">
-              <img
-                onClick={() => setShowAllPhotos(true)}
-                className="aspect-square object-cover cursor-pointer w-full h-full"
-                src={"http://localhost:4000/uploads/" + placeDetail.photos[3]}
+              <CloudinaryImage
+                photo={placeDetail.photos[3]}
                 alt=""
+                className="aspect-square object-cover cursor-pointer w-full h-full"
+                onClick={() => setShowAllPhotos(true)}
               />
             </div>
           )}

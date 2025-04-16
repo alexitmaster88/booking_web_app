@@ -2,6 +2,7 @@ import { Link, useLocation } from "react-router-dom";
 import DateDuration from "./DateDuration";
 import { useContext } from "react";
 import { UserContext } from "./UserContext";
+import CloudinaryImage from "./CloudinaryImage";
 
 export default function List(props) {
   const { pathname } = useLocation();
@@ -29,10 +30,10 @@ export default function List(props) {
               className="flex w-32 h-32 bg-gray-200"
             >
               {place.photos?.length > 0 && (
-                <img
-                  className="flex object-cover with-auto"
-                  src={`http://localhost:4000/uploads/${place.photos[0]}`}
-                  alt=""
+                <CloudinaryImage
+                  photo={place.photos[0]}
+                  alt={place.title}
+                  className="flex object-cover with-auto rounded-lg"
                 />
               )}
             </Link>

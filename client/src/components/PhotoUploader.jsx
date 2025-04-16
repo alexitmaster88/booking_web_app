@@ -1,5 +1,6 @@
 import { useState } from "react";
 import axios from "axios";
+import CloudinaryImage from "./CloudinaryImage";
 
 export default function PhotoUploader({ addedPhotos, setAddedPhotos }) {
   const [photoLink, setPhotoLink] = useState("");
@@ -17,11 +18,11 @@ export default function PhotoUploader({ addedPhotos, setAddedPhotos }) {
     }
 
     try {
-      const { data: filename } = await axios.post("/upload-by-link", {
+      const { data } = await axios.post("/upload-by-link", {
         link: photoLink,
       });
       setAddedPhotos((prev) => {
-        return [...prev, filename];
+        return [...prev, data];
       });
     } catch (e) {
       setUploadError("Upload failed, please try again later.");
@@ -45,29 +46,28 @@ export default function PhotoUploader({ addedPhotos, setAddedPhotos }) {
     }
     
     try {
-      const response = await axios.post("/upload", data, {
+      const { data: uploadedFiles } = await axios.post("/upload", data, {
         headers: { "Content-Type": "multipart/form-data" },
       });
       
-      const { data: filenames } = response;
       setAddedPhotos((prev) => {
-        return [...prev, ...filenames];
+        return [...prev, ...uploadedFiles];
       });
     } catch (error) {
       setUploadError("Upload failed, please try again later.");
     }
   }
 
-  function removePhoto(event, filename) {
+  function removePhoto(event, photo) {
     event.preventDefault(); // every button in a form should have this
-    setAddedPhotos([...addedPhotos.filter((photo) => photo !== filename)]);
+    setAddedPhotos([...addedPhotos.filter((item) => item !== photo)]);
     setUploadError("");
   }
 
-  function selectAsMainPhoto(event, filename) {
+  function selectAsMainPhoto(event, photo) {
     event.preventDefault();
-    const addedPhotosNotSelected = addedPhotos.filter(photo => photo != filename);
-    setAddedPhotos([filename, ...addedPhotosNotSelected]);
+    const addedPhotosNotSelected = addedPhotos.filter(item => item !== photo);
+    setAddedPhotos([photo, ...addedPhotosNotSelected]);
   }
 
   return (
@@ -98,16 +98,16 @@ export default function PhotoUploader({ addedPhotos, setAddedPhotos }) {
 
       <div className="gap-2 mt-2 grid grid-cols-2 md:grid-cols-4">
         {addedPhotos.length > 0 &&
-          addedPhotos.map((filename) => (
-            <div className="h-32 flex relative" key={filename}>
-              <img
+          addedPhotos.map((photo, index) => (
+            <div className="h-32 flex relative" key={index}>
+              <CloudinaryImage 
+                photo={photo}
                 className="rounded-2xl w-full object-cover"
-                src={"http://localhost:4000/uploads/" + filename}
-                alt="Uploaded"
+                alt="Uploaded photo"
               />
               <button
                 onClick={(event) => {
-                  removePhoto(event, filename);
+                  removePhoto(event, photo);
                 }}
                 className="cursor-pointer absolute right-1 bottom-1 text-white p-2 bg-black bg-opacity-50 rounded-full"
               >
@@ -128,11 +128,11 @@ export default function PhotoUploader({ addedPhotos, setAddedPhotos }) {
               </button>
               <button 
                 onClick={(event) => {
-                  selectAsMainPhoto(event, filename);
+                  selectAsMainPhoto(event, photo);
                 }}
                 className="cursor-pointer absolute right-1 top-1 text-white p-2 bg-black bg-opacity-50 rounded-full"
               >
-                {filename === addedPhotos[0] && (
+                {photo === addedPhotos[0] && (
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
                     viewBox="0 0 24 24"
@@ -146,7 +146,7 @@ export default function PhotoUploader({ addedPhotos, setAddedPhotos }) {
                     />
                   </svg>
                 )}
-                {filename !== addedPhotos[0] && (
+                {photo !== addedPhotos[0] && (
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
                     fill="none"

@@ -11,13 +11,16 @@ const imageDownloader = require("image-downloader");
 const multer = require("multer");
 const fs = require("fs");
 const bodyParser = require("body-parser");
+const cloudinary = require('./config/cloudinary');
+const streamifier = require('streamifier');
 
 
 const app = express();
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.json());
 app.use(cookieParser()); // to read cookies
-app.use("/uploads", express.static(__dirname + "/uploads")); // make image visible on http://localhost:4000/uploads/<photoname>
+// We're keeping this line for any static files, but primary image hosting will be on Cloudinary
+app.use("/uploads", express.static(__dirname + "/uploads")); 
 app.use(
   cors({
     // enable two sites to communicate
@@ -132,27 +135,51 @@ app.post("/logout", (req, res) => {
 
 app.post("/upload-by-link", async (req, res) => {
   const { link } = req.body;
-  const newName = "photo" + Date.now() + ".jpg";
-  await imageDownloader.image({
-    url: link,
-    dest: __dirname + "/uploads/" + newName,
-  });
-  res.json(newName);
+  try {
+    // Upload directly to cloudinary using the external URL
+    const result = await cloudinary.uploader.upload(link, {
+      folder: 'airbnb_clone',
+    });
+    
+    // Return the secure URL and public ID for storage in the database
+    res.json({ url: result.secure_url, publicId: result.public_id });
+  } catch (error) {
+    console.error('Error uploading image by link:', error);
+    res.status(500).json({ error: 'Failed to upload image' });
+  }
 });
 
-// upload photos
-const photoMiddleware = multer({ dest: "uploads/" });
-app.post("/upload", photoMiddleware.array("photos", 100), (req, res) => {
+// Modified upload function for Cloudinary
+const photoMiddleware = multer({ storage: multer.memoryStorage() });
+app.post("/upload", photoMiddleware.array("photos", 100), async (req, res) => {
   const uploadedFiles = [];
-  for (let i = 0; i < req.files.length; i++) {
-    const { path, originalname } = req.files[i];
-    const parts = originalname.split(".");
-    const extension = parts[parts.length - 1];
-    const newPath = path + "." + extension;
-    fs.renameSync(path, newPath);
-    uploadedFiles.push(newPath.replace("uploads/", ""));
+  try {
+    // Process each file with Cloudinary
+    for (let i = 0; i < req.files.length; i++) {
+      const file = req.files[i];
+      
+      // Create upload stream to Cloudinary
+      const uploadPromise = new Promise((resolve, reject) => {
+        const uploadStream = cloudinary.uploader.upload_stream({
+          folder: 'airbnb_clone',
+        }, (error, result) => {
+          if (error) return reject(error);
+          resolve({ url: result.secure_url, publicId: result.public_id });
+        });
+        
+        // Pipe the file buffer to the upload stream
+        streamifier.createReadStream(file.buffer).pipe(uploadStream);
+      });
+      
+      const uploadResult = await uploadPromise;
+      uploadedFiles.push(uploadResult);
+    }
+    
+    res.json(uploadedFiles);
+  } catch (error) {
+    console.error('Error uploading images:', error);
+    res.status(500).json({ error: 'Failed to upload images' });
   }
-  res.json(uploadedFiles);
 });
 
 // submit new place form

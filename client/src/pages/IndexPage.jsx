@@ -1,10 +1,12 @@
 import axios from "axios";
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import CloudinaryImage from "../components/CloudinaryImage";
 
 export default function IndexPage() {
   const [places, setPlaces] = useState([]);
   const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  
   useEffect(() => {
     axios.get("/home").then((response) => {
       setPlaces(response.data);
@@ -18,10 +20,10 @@ export default function IndexPage() {
           <Link key={place.id} to={"/place/" + place.id}>
             <div className="rounded-2xl aspect-square mt-3">
               {place.photos?.length > 0 && (
-                <img
+                <CloudinaryImage
+                  photo={place.photos[0]}
+                  alt={place.title}
                   className="rounded-2xl object-cover aspect-square"
-                  src={"http://localhost:4000/uploads/" + place.photos[0]}
-                  alt=""
                 />
               )}
             </div>
