@@ -54,58 +54,52 @@ export default function PhotoGallery({placeDetail}) {
     <div className="relative rounded-xl overflow-hidden">
       {/* Main photo layout */}
       {placeDetail.photos?.length > 0 ? (
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
-          {/* Main large image */}
-          <div className="md:col-span-2 row-span-2">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2">
+          {/* First image - always larger on all devices */}
+          <div className="col-span-1 sm:col-span-2 row-span-2">
             <img
               onClick={() => setShowAllPhotos(true)}
-              className="aspect-square md:aspect-auto w-full h-full object-cover cursor-pointer rounded-tl-xl rounded-bl-xl"
+              className="aspect-square sm:aspect-auto w-full h-full object-cover cursor-pointer rounded-tl-xl md:rounded-bl-xl"
               src={"http://localhost:4000/uploads/" + placeDetail.photos[0]}
               alt={placeDetail.title}
             />
           </div>
           
-          {/* Side images */}
-          <div className="hidden md:block">
-            {placeDetail.photos?.length > 1 && (
+          {/* Second image - show on mobile and desktop */}
+          {placeDetail.photos?.length > 1 && (
+            <div className="col-span-1">
               <img
                 onClick={() => setShowAllPhotos(true)}
                 className="aspect-square object-cover cursor-pointer w-full h-full"
                 src={"http://localhost:4000/uploads/" + placeDetail.photos[1]}
                 alt=""
               />
-            )}
-          </div>
-          <div className="hidden md:block">
-            {placeDetail.photos?.length > 2 && (
+            </div>
+          )}
+          
+          {/* Third image - show on mobile and desktop */}
+          {placeDetail.photos?.length > 2 && (
+            <div className="col-span-1">
               <img
                 onClick={() => setShowAllPhotos(true)}
                 className="aspect-square object-cover cursor-pointer w-full h-full rounded-tr-xl"
                 src={"http://localhost:4000/uploads/" + placeDetail.photos[2]}
                 alt=""
               />
-            )}
-          </div>
-          <div className="hidden md:block">
-            {placeDetail.photos?.length > 3 && (
+            </div>
+          )}
+          
+          {/* Fourth image - show on mobile and desktop */}
+          {placeDetail.photos?.length > 3 && (
+            <div className="col-span-1">
               <img
                 onClick={() => setShowAllPhotos(true)}
                 className="aspect-square object-cover cursor-pointer w-full h-full"
                 src={"http://localhost:4000/uploads/" + placeDetail.photos[3]}
                 alt=""
               />
-            )}
-          </div>
-          <div className="hidden md:block">
-            {placeDetail.photos?.length > 4 && (
-              <img
-                onClick={() => setShowAllPhotos(true)}
-                className="aspect-square object-cover cursor-pointer w-full h-full rounded-br-xl"
-                src={"http://localhost:4000/uploads/" + placeDetail.photos[4]}
-                alt=""
-              />
-            )}
-          </div>
+            </div>
+          )}
         </div>
       ) : (
         <div className="aspect-video bg-gray-200 flex items-center justify-center rounded-xl">

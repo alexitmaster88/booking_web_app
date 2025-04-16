@@ -36,13 +36,6 @@ export default function ProfilePage({}) {
           <div className="mb-5">
             <div className="text-3xl font-bold mb-1">{user.name}</div>
             <div className="text-gray-500">{user.email}</div>
-            <div className="mt-3">
-              <span className={`px-3 py-1 rounded-full text-sm ${
-                user.userType === 'host' ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800'
-              }`}>
-                {user.userType === 'host' ? 'Host Account' : 'Client Account'}
-              </span>
-            </div>
           </div>
 
           <div className="mt-6 border-t pt-6">
@@ -72,17 +65,6 @@ export default function ProfilePage({}) {
               </p>
               <a href="/" className="inline-block bg-blue-500 text-white py-2 px-4 rounded-lg">
                 Browse Conference Rooms
-              </a>
-            </div>
-          )}
-
-          {user.userType === 'host' && (
-            <div className="mt-5">
-              <p className="text-gray-700 mb-4">
-                As a host, you can create and manage your own conference rooms and handle booking requests.
-              </p>
-              <a href="/account/user-places" className="inline-block bg-blue-500 text-white py-2 px-4 rounded-lg">
-                Manage My Conference Rooms
               </a>
             </div>
           )}

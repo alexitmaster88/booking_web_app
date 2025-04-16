@@ -3,9 +3,19 @@ import axios from "axios";
 
 export default function PhotoUploader({ addedPhotos, setAddedPhotos }) {
   const [photoLink, setPhotoLink] = useState("");
+  const [uploadError, setUploadError] = useState("");
+  const MAX_PHOTOS = 4; // Set maximum number of photos to 4
 
   async function addPhotoByLink(event) {
     event.preventDefault();
+    setUploadError("");
+    
+    // Check if maximum photos reached
+    if (addedPhotos.length >= MAX_PHOTOS) {
+      setUploadError(`Maximum ${MAX_PHOTOS} photos allowed.`);
+      return;
+    }
+
     try {
       const { data: filename } = await axios.post("/upload-by-link", {
         link: photoLink,
@@ -14,32 +24,44 @@ export default function PhotoUploader({ addedPhotos, setAddedPhotos }) {
         return [...prev, filename];
       });
     } catch (e) {
-      alert("Upload failed, please try again later.");
+      setUploadError("Upload failed, please try again later.");
     }
     setPhotoLink("");
   }
 
   async function uploadPhoto(event) {
+    setUploadError("");
     const files = event.target.files;
+
+    // Check if maximum photos reached
+    if (addedPhotos.length + files.length > MAX_PHOTOS) {
+      setUploadError(`Maximum ${MAX_PHOTOS} photos allowed. You can add ${MAX_PHOTOS - addedPhotos.length} more.`);
+      return;
+    }
+
     const data = new FormData(); // to store upload files
     for (let i = 0; i < files.length; i++) {
       data.append("photos", files[i]);
     }
-    await axios
-      .post("/upload", data, {
+    
+    try {
+      const response = await axios.post("/upload", data, {
         headers: { "Content-Type": "multipart/form-data" },
-      })
-      .then((response) => {
-        const { data: filenames } = response;
-        setAddedPhotos((prev) => {
-          return [...prev, ...filenames];
-        });
       });
+      
+      const { data: filenames } = response;
+      setAddedPhotos((prev) => {
+        return [...prev, ...filenames];
+      });
+    } catch (error) {
+      setUploadError("Upload failed, please try again later.");
+    }
   }
 
   function removePhoto(event, filename) {
     event.preventDefault(); // every button in a form should have this
     setAddedPhotos([...addedPhotos.filter((photo) => photo !== filename)]);
+    setUploadError("");
   }
 
   function selectAsMainPhoto(event, filename) {
@@ -50,27 +72,38 @@ export default function PhotoUploader({ addedPhotos, setAddedPhotos }) {
 
   return (
     <div>
-      <div className="flex gap-2 items-center">
+      <div className="flex flex-col md:flex-row gap-2 items-center">
         <input
           type="text"
           placeholder="Add using a link ....jpg"
           value={photoLink}
           onChange={(event) => setPhotoLink(event.target.value)}
+          className="flex-grow"
         />
         <button
           onClick={addPhotoByLink}
-          className="bg-primary text-white rounded-2xl w-40 h-11"
+          className="bg-primary text-white rounded-2xl w-full md:w-40 h-11"
         >
           Add photo
         </button>
       </div>
-      <div className="gap-2 mt-2 grid grid-cols-3 md:grid-cols-4 lg-grid-col">
+      
+      {uploadError && (
+        <div className="text-red-500 mt-2">{uploadError}</div>
+      )}
+      
+      <div className="mt-2 mb-2 text-sm text-gray-600">
+        <p>{addedPhotos.length}/{MAX_PHOTOS} photos uploaded. {MAX_PHOTOS - addedPhotos.length} remaining.</p>
+      </div>
+
+      <div className="gap-2 mt-2 grid grid-cols-2 md:grid-cols-4">
         {addedPhotos.length > 0 &&
           addedPhotos.map((filename) => (
             <div className="h-32 flex relative" key={filename}>
               <img
                 className="rounded-2xl w-full object-cover"
                 src={"http://localhost:4000/uploads/" + filename}
+                alt="Uploaded"
               />
               <button
                 onClick={(event) => {
@@ -132,29 +165,33 @@ export default function PhotoUploader({ addedPhotos, setAddedPhotos }) {
               </button>
             </div>
           ))}
-        <label className="h-32 flex items-center gap-1 justify-center border rounded-xl p-8 text-xl text-gray-700 cursor-pointer">
-          <input
-            type="file"
-            multiple
-            className="hidden"
-            onChange={uploadPhoto}
-          />
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            fill="none"
-            viewBox="0 0 24 24"
-            strokeWidth={1.5}
-            stroke="currentColor"
-            className="w-6 h-6"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              d="M12 16.5V9.75m0 0l3 3m-3-3l-3 3M6.75 19.5a4.5 4.5 0 01-1.41-8.775 5.25 5.25 0 0110.233-2.33 3 3 0 013.758 3.848A3.752 3.752 0 0118 19.5H6.75z"
+        {/* Only show upload button if less than MAX_PHOTOS */}
+        {addedPhotos.length < MAX_PHOTOS && (
+          <label className="h-32 flex items-center gap-1 justify-center border rounded-xl p-8 text-xl text-gray-700 cursor-pointer">
+            <input
+              type="file"
+              multiple
+              className="hidden"
+              onChange={uploadPhoto}
+              accept="image/*"
             />
-          </svg>
-          <span>Upload</span>
-        </label>
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              fill="none"
+              viewBox="0 0 24 24"
+              strokeWidth={1.5}
+              stroke="currentColor"
+              className="w-6 h-6"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M12 16.5V9.75m0 0l3 3m-3-3l-3 3M6.75 19.5a4.5 4.5 0 01-1.41-8.775 5.25 5.25 0 0110.233-2.33 3 3 0 013.758 3.848A3.752 3.752 0 0118 19.5H6.75z"
+              />
+            </svg>
+            <span>Upload</span>
+          </label>
+        )}
       </div>
     </div>
   );
